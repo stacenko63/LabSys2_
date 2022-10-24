@@ -1,22 +1,21 @@
 #include <signal.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
-#include <errno.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <iostream>
+#include <ctime>
 using namespace std;
 
 static void signal_handler(int);
 void sigaction_handle(int signum, siginfo_t *info, void* ctx);
-int pid1, pid2, status, result = 0, count = 1;
+int pid1, pid2, status, result = 0, count = 1, module = 10;
 bool check = false;
+clock_t t;
 
 
 int main( int argc, char *argv[], char *env[] ){
 
-    srand(time(NULL));
+    srand(11 + time(NULL));
 
     setlocale(LC_ALL, "RUS");
 
@@ -35,9 +34,9 @@ int main( int argc, char *argv[], char *env[] ){
     pid1 = getpid();
 
 
-
     if( (pid2 = fork()) == 0 )
     {
+        srand(time(NULL));
         pid2 = getpid();
         cout << "Дочерний процесс: создан\n";
         cout <<  "Дочерний процесс: отправляет родительскому процессу сигнал SIGUSR1\n";
@@ -83,7 +82,6 @@ void sigaction_handle(int signum, siginfo_t *info, void* ctx) {
         if (info->si_value.sival_int == -1)
         {
             check = true;
-            //kill(pid2, SIGUSR1);
         }
         else
         {
@@ -111,7 +109,7 @@ static void signal_handler(int signo){
             cout << "Процесс обработки сигнала SIGUSR1\n";
             if (pid1 == getpid() && result == 0)
             {
-                result = rand() % 100 + 1;
+                result = rand() % module + 1;
                 cout << "Родительский процесс: число загадано\nЗагаданное число: " << result << "\n";
                 kill(pid2, SIGUSR2);
             }
@@ -122,7 +120,8 @@ static void signal_handler(int signo){
             }
             else if (pid2 == getpid())
             {
-                cout << "Дочерний процесс: я отгадал число!\nКоличество попыток: " << count - 1 << "\n";
+                t = clock() - t;
+                cout << "Дочерний процесс: я отгадал число!\nКоличество попыток: " << count - 1 << "\nЗатраченное время: " << (double)t / CLOCKS_PER_SEC << "\n";
                 sigqueue(pid1, SIGUSR1, sigval {-1});
                 exit(0);
             }
@@ -133,9 +132,9 @@ static void signal_handler(int signo){
             cout << "Процесс обработки сигнала SIGUSR2\n";
             if (pid2 == getpid())
             {
+                t = clock();
                 cout << "Дочерний процесс: пробую угадать число!\n";
-                int tmp = rand() % 100 + 1;
-                tmp = rand() % 100 + 1;
+                int tmp = rand() % module + 1;
                 cout << "Попытка " << count++ << ": " << tmp << "\n";
                 sigqueue(pid1, SIGUSR1, sigval {tmp});
             }
